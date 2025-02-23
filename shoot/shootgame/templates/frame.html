@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>게임 화면</title>
+    <style>
+        #gameArea {
+            position: relative;
+            width: 600px;
+            height: 800px;
+            background-color: lightgray;
+            border: 2px solid black;
+            overflow: hidden;
+        }
+
+        .enemy {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: gray;
+        }
+
+        .bullet {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: black;
+            border-radius: 50%;
+        }
+
+        #gun {
+            position: absolute;
+            width: 50px;
+            height: 20px;
+            background-color: black;
+            bottom: 10px;
+            left: 275px;
+        }
+        
+        #fireBtn {
+            position: absolute;
+            width: 80px;
+            height: 40px;
+            background-color: red;
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            bottom: 10px;
+            right: 10px;
+        }
+
+        #angleControl {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+        }
+
+        #angleDisplay {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameArea">
+        <div id="gun"></div>
+        <button id="fireBtn">FIRE</button>
+
+        <input type="range" id="angleControl" min="-90" max="90" value="0">
+        <p id="angleDisplay">Angle: 0°</p>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const gameArea = document.getElementById("gameArea");
+            const angleControl = document.getElementById("angleControl");
+            const angleDisplay = document.getElementById("angleDisplay");
+
+            let selectedAngle = 0;
+
+            angleControl.addEventListener("input", function () {
+                selectedAngle = parseInt(angleControl.value);
+                angleDisplay.innerText = `Angle: ${selectedAngle}°`;
+            });
+            
+            function createPlayer() {
+                fetch('/api/create/player/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(response => response.json())
+                .then(data => console.log("Player 1:", data))
+                .catch(error => console.error("Error for create player:", error));
+
+            } 
+            function spawnEnemy() {
+                fetch('/api/enemies/spawn/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(response => response.json())
+                .then(data => console.log("Enemy spawned:", data))
+                .catch(error => console.error("Error spawning enemy:", error));
+
+                setTimeout(spawnEnemy, Math.random() * 3000 + 1000);
+            }
+
+            function updateEnemies(enemies) {
+                document.querySelectorAll(".enemy").forEach(e => e.remove());
+
+                enemies.forEach(enemy => {
+                    let enemyDiv = document.createElement("div");
+                    enemyDiv.className = "enemy";
+                    enemyDiv.style.left = `${enemy._coo_x || enemy.coo_x}px`;
+                    enemyDiv.style.top = `${enemy._coo_y || enemy.coo_y}px`;
+                    gameArea.appendChild(enemyDiv);
+                });
+            }
+
+            function updateBullets(bullets) {
+                document.querySelectorAll(".bullet").forEach(b => b.remove());
+
+                bullets.forEach(bullet => {
+                    let bulletDiv = document.createElement("div");
+                    bulletDiv.className = "bullet";
+                    bulletDiv.style.left = `${bullet._coo_x || bullet.coo_x}px`;
+                    bulletDiv.style.top = `${bullet._coo_y || bullet.coo_y}px`;
+                    gameArea.appendChild(bulletDiv);
+
+                    if (bullet._coo_x <= 0 || bullet._coo_x >= 600 || bullet._coo_y <= 0) {
+                        fetch(`/api/bullets/${bullet.id}/reflex/`, { 
+                            method: "POST", 
+                            headers: { "Content-Type": "application/json" }
+                        })
+                        .catch(error => console.error("Error reflecting bullet:", error));
+                    }
+                });
+            }
+
+            function updateGame() {
+                Promise.all([
+                    fetch('/api/enemies/').then(response => response.json()).then(updateEnemies),
+                    fetch('/api/bullets/').then(response => response.json()).then(updateBullets),
+                    fetch('/api/enemies/move/', { method: 'POST' }),
+                    fetch('/api/bullets/move/', { method: 'POST' })
+                ])
+                .catch(error => console.error("Error updating game state:", error))
+                .finally(() => setTimeout(updateGame, 500));  
+            }
+
+            document.getElementById("fireBtn").addEventListener("click", function() {
+                fetch('/api/player/fire/', { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ angle: selectedAngle })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error("Bullet could not be fired:", data.error);
+                    } else {
+                        console.log("Bullet fired:", data);
+                    }
+                })
+                .catch(error => console.error("Error firing bullet:", error));
+            });
+            createPlayer();
+            updateGame();
+            spawnEnemy();
+        });
+    </script>
+</body>
+</html>
