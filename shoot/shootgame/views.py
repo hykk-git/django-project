@@ -21,7 +21,7 @@ class PlayerViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def create_player(self, request):
         player = Player.create_player()
-        return Response({"message": "Player created", "player_id": str(player.id)})
+        return Response({"message": "Player created", "player_id": PlayerSerializer(id).data})
     
     @action(detail=False, methods=['post'])
     def fire(self, request):
@@ -34,22 +34,13 @@ class PlayerViewSet(viewsets.ModelViewSet):
             return Response(BulletSerializer(bullet).data)
         return Response({"error": "Max 3 bullets allowed"}, status=400)
 
-    @action(detail=False, methods=['post'])
-    def reset(self, request):
-        player, _ = Player.objects.get_or_create(
-            id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
-            defaults={"name": "Player1"}
-        )
-        player.reset()
-        return Response({"message": "Game Reset"})
-
 class EnemyViewSet(viewsets.ModelViewSet):
     queryset = Enemy.objects.all()
     serializer_class = EnemySerializer
 
     @action(detail=False, methods=['post'])
     def spawn(self, request):
-        time.sleep(random.uniform(1, 3))
+        time.sleep(random.uniform(3, 4))
         enemy = Enemy.create_enemy()
         return Response(EnemySerializer(enemy).data)
 
@@ -57,7 +48,7 @@ class EnemyViewSet(viewsets.ModelViewSet):
     def move(self, request):
         for enemy in Enemy.objects.all():
             enemy.move()
-            if enemy.has_hit_bottom():
+            if enemy.hit_bottom():
                 enemy.broke() 
         return Response({"message": "Enemies moved"})
 
@@ -69,12 +60,15 @@ class BulletViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def move(self, request):
         for bullet in Bullet.objects.all():
-            bullet.move()
+            bx, by = bullet.move()
+            print("bullet 위치: ", bx, by)
             bullet.reflex()
 
             enemies = Enemy.objects.all()
             for enemy in enemies:
-                if bullet.has_hit_target(enemy): 
+                ex, ey = enemy.move()
+                print("enemy 위치: ", ex, ey)
+                if bullet.hit_enemy(enemy): 
                     bullet.broke()
                     enemy.broke()
                     break  

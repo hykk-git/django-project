@@ -112,7 +112,7 @@ class Enemy(Unit):
     def broke(self):
         player = Player.objects.filter(id=1).first()
         if player:
-            player.life(-1)
+            player.life = -1
             player.save()
         else:
             print("플레이어 없음")
