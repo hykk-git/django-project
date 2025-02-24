@@ -61,6 +61,7 @@ class Player(models.Model):
             _coo_y=Config.FRAME_HEIGHT,
             _angle=angle
         )
+        print("bullet 현재 개수: ", Bullet.objects.count())
         return bullet
     
     def game_over(self):
@@ -108,8 +109,9 @@ class BoxEnemy(Unit):
         return cls.objects.create(_coo_x=spawn_x, _coo_y=0, _speed=10)
 
     def move(self):
-        self._coo_y += self._speed
+        self._coo_y += 10
         self.save()
+        return self._coo_x, self._coo_y
 
     def hit_bottom(self):
         return self._coo_y >= Config.FRAME_HEIGHT
