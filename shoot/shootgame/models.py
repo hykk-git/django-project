@@ -41,7 +41,7 @@ class Player(models.Model):
             return None
             
         if Bullet.objects.count() >= 3:
-            Bullet.objects.first().delete()
+            Bullet.objects.last().delete()
 
         bullet = Bullet.objects.create(
             number=str(uuid.uuid4()),
@@ -61,7 +61,7 @@ class Unit(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     _coo_x = models.IntegerField()
     _coo_y = models.IntegerField()
-    _speed = models.IntegerField(default=20)
+    _speed = models.IntegerField(default=100)
 
     @property
     def coo(self):
@@ -98,13 +98,13 @@ class Enemy(Unit):
             number=str(uuid.uuid4()),
             _coo_x=spawn_x,
             _coo_y=0,
-            _speed = 10
+            _speed = 50
         )
 
     def move(self):
         self._coo_y += 10
         self.save()
-        return self._coo_x, self._coo_y
+        return self._coo_x, self._coo_y # 디버깅 옵션. 추후 삭제해야 함
 
     def hit_bottom(self):
         return self._coo_y >=900
@@ -130,10 +130,10 @@ class Bullet(Unit):
         self._angle = val
         
     def move(self):
-        self._coo_x += 20 * math.sin(math.radians(self._angle))
-        self._coo_y -= 20 * math.cos(math.radians(self._angle))
+        self._coo_x += self._speed * math.sin(math.radians(self._angle))
+        self._coo_y -= self._speed * math.cos(math.radians(self._angle))
         self.save()
-        return self._coo_x, self._coo_y
+        return self._coo_x, self._coo_y # 디버깅 옵션. 추후 삭제해야 함
 
     def reflex(self):
         if self._coo_x <= 0 or self._coo_x >= 600:
@@ -143,6 +143,7 @@ class Bullet(Unit):
             self._angle = -self._angle
 
         self.save()
+        return self._coo_x, self._coo_y # 디버깅 옵션. 추후 삭제해야 함
 
     def hit_enemy(self, enemy):
         return (

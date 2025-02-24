@@ -73,7 +73,6 @@
     <div id="gameArea">
         <div id="gun"></div>
         <button id="fireBtn">FIRE</button>
-
         <input type="range" id="angleControl" min="-90" max="90" value="0">
         <p id="angleDisplay">Angle: 0°</p>
     </div>
@@ -97,25 +96,12 @@
                     headers: { 'Content-Type': 'application/json' }
                 })
                 .then(response => response.json())
-                .then(data => console.log("Player 1:", data))
-                .catch(error => console.error("Error for create player:", error));
-
-            } 
-            function spawnEnemy() {
-                fetch('/api/enemies/spawn/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                })
-                .then(response => response.json())
-                .then(data => console.log("Enemy spawned:", data))
-                .catch(error => console.error("Error spawning enemy:", error));
-
-                setTimeout(spawnEnemy, Math.random() * 3000 + 1000);
+                .then(data => console.log("Player created:", data))
+                .catch(error => console.error("Error creating player:", error));
             }
 
             function updateEnemies(enemies) {
                 document.querySelectorAll(".enemy").forEach(e => e.remove());
-
                 enemies.forEach(enemy => {
                     let enemyDiv = document.createElement("div");
                     enemyDiv.className = "enemy";
@@ -127,21 +113,12 @@
 
             function updateBullets(bullets) {
                 document.querySelectorAll(".bullet").forEach(b => b.remove());
-
                 bullets.forEach(bullet => {
                     let bulletDiv = document.createElement("div");
                     bulletDiv.className = "bullet";
                     bulletDiv.style.left = `${bullet._coo_x || bullet.coo_x}px`;
                     bulletDiv.style.top = `${bullet._coo_y || bullet.coo_y}px`;
                     gameArea.appendChild(bulletDiv);
-
-                    if (bullet._coo_x <= 0 || bullet._coo_x >= 600 || bullet._coo_y <= 0) {
-                        fetch(`/api/bullets/${bullet.id}/reflex/`, { 
-                            method: "POST", 
-                            headers: { "Content-Type": "application/json" }
-                        })
-                        .catch(error => console.error("Error reflecting bullet:", error));
-                    }
                 });
             }
 
@@ -150,10 +127,11 @@
                     fetch('/api/enemies/').then(response => response.json()).then(updateEnemies),
                     fetch('/api/bullets/').then(response => response.json()).then(updateBullets),
                     fetch('/api/enemies/move/', { method: 'POST' }),
-                    fetch('/api/bullets/move/', { method: 'POST' })
+                    fetch('/api/bullets/move/', { method: 'POST' }),
+                    fetch('/api/enemies/spawn/', { method: 'POST' }),
                 ])
                 .catch(error => console.error("Error updating game state:", error))
-                .finally(() => setTimeout(updateGame, 500));  
+                .finally(() => setTimeout(updateGame, 100));  
             }
 
             document.getElementById("fireBtn").addEventListener("click", function() {
@@ -172,9 +150,9 @@
                 })
                 .catch(error => console.error("Error firing bullet:", error));
             });
+
             createPlayer();
             updateGame();
-            spawnEnemy();
         });
     </script>
 </body>

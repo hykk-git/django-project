@@ -21,18 +21,16 @@ class PlayerViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def create_player(self, request):
         player = Player.create_player()
-        return Response({"message": "Player created", "player_id": PlayerSerializer(id).data})
+        return Response({"message": "Player created"})
     
     @action(detail=False, methods=['post'])
     def fire(self, request):
         player = Player.objects.first()
 
-        angle = int(request.data.get('angle', 0))
+        angle = int(request.data.get('angle'))
         bullet = player.fire(angle)
 
-        if bullet:
-            return Response(BulletSerializer(bullet).data)
-        return Response({"error": "Max 3 bullets allowed"}, status=400)
+        return Response(BulletSerializer(bullet).data)
 
 class EnemyViewSet(viewsets.ModelViewSet):
     queryset = Enemy.objects.all()
@@ -40,7 +38,7 @@ class EnemyViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def spawn(self, request):
-        time.sleep(random.uniform(3, 4))
+        time.sleep(random.uniform(1, 3))
         enemy = Enemy.create_enemy()
         return Response(EnemySerializer(enemy).data)
 
@@ -60,14 +58,15 @@ class BulletViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def move(self, request):
         for bullet in Bullet.objects.all():
-            bx, by = bullet.move()
-            print("bullet 위치: ", bx, by)
+            # bx, by = bullet.move()
+            # print("bullet 위치: ", bx, by)
+            bullet.move()
             bullet.reflex()
 
             enemies = Enemy.objects.all()
             for enemy in enemies:
-                ex, ey = enemy.move()
-                print("enemy 위치: ", ex, ey)
+                # ex, ey = enemy.move()
+                # print("enemy 위치: ", ex, ey)
                 if bullet.hit_enemy(enemy): 
                     bullet.broke()
                     enemy.broke()
@@ -75,11 +74,11 @@ class BulletViewSet(viewsets.ModelViewSet):
 
         return Response({"message": "Bullets moved"})
 
-    @action(detail=True, methods=['post'])
-    def reflex(self, request, id=None):
-        try:
-            bullet = Bullet.objects.get(id=id)
-            bullet.reflex()
-            return Response(BulletSerializer(bullet).data)
-        except Bullet.DoesNotExist:
-            return Response({"error": "Bullet not found"}, status=404)
+    # @action(detail=True, methods=['post'])
+    # def reflex(self, request, id=None):
+    #     try:
+    #         bullet = Bullet.objects.get(id=id)
+    #         bullet.reflex()
+    #         return Response(BulletSerializer(bullet).data)
+    #     except Bullet.DoesNotExist:
+    #         return Response({"error": "Bullet not found"}, status=404)
