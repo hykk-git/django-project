@@ -1,5 +1,4 @@
 from django.db import models
-from abc import ABC, abstractmethod
 import math
 import uuid
 import random
@@ -9,7 +8,7 @@ class Player(models.Model):
     Bullet 객체에게 총알 생성 요청 보내는 객체
     """
     name = models.CharField(max_length=100)
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.CharField(primary_key=True, default="1", max_length=10, editable=False)
     _score = models.IntegerField(default=0)
     _life = models.IntegerField(default=3)
     
@@ -29,21 +28,12 @@ class Player(models.Model):
     def life(self, val):
         self._life += val
 
-    def reset(self):
-        self._score = 0
-        self._life = 3
-        self.save()
-
     @classmethod
     def create_player(cls):
-        player, created = cls.objects.get_or_create(
-            id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        player = cls.objects.get_or_create(
+            id=1,
             defaults={"name": "Player1"}
         )
-        if created:
-            print("Player 생성 완료:", player)
-        else:
-            print("Player 존재:", player)
         return player
     
     def fire(self, angle):
@@ -59,6 +49,7 @@ class Player(models.Model):
             _coo_y=750,
             _angle=angle
         )
+        print("bullet 현재 개수: ", Bullet.objects.count())
         return bullet
     
 class Unit(models.Model):
@@ -70,6 +61,7 @@ class Unit(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     _coo_x = models.IntegerField()
     _coo_y = models.IntegerField()
+    _speed = models.IntegerField(default=20)
 
     @property
     def coo(self):
@@ -78,6 +70,14 @@ class Unit(models.Model):
     @coo.setter
     def coo(self, val):
         self._coo_x, self._coo_y = val, val
+    
+    @property
+    def speed(self):
+        return self._speed
+    
+    @speed.setter
+    def speed(self, val):
+        self._speed = val
 
     def move(self):
         pass
@@ -90,8 +90,6 @@ class Unit(models.Model):
 
 
 class Enemy(Unit):
-    _speed = models.IntegerField(default=5)
-
     @classmethod
     def create_enemy(cls):
         spawn_positions = [50, 150, 250, 350, 450]  
@@ -99,25 +97,29 @@ class Enemy(Unit):
         return cls.objects.create(
             number=str(uuid.uuid4()),
             _coo_x=spawn_x,
-            _coo_y=0
+            _coo_y=0,
+            _speed = 10
         )
 
     def move(self):
-        self._coo_y += self._speed
+        self._coo_y += 10
         self.save()
+        return self._coo_x, self._coo_y
 
-    def has_hit_bottom(self, screen_height=800):
-        return self._coo_y >= screen_height
+    def hit_bottom(self):
+        return self._coo_y >=900
 
     def broke(self):
-        player = Player.objects.first()
-        player.life(-1)
-        player.save()
+        player = Player.objects.filter(id=1).first()
+        if player:
+            player.life(-1)
+            player.save()
+        else:
+            print("플레이어 없음")
         self.delete()
 
 class Bullet(Unit):
     _angle = models.IntegerField()
-    _speed = models.IntegerField(default=100)
 
     @property
     def angle(self):
@@ -128,10 +130,10 @@ class Bullet(Unit):
         self._angle = val
         
     def move(self):
-        self._coo_x += self._speed * math.cos(math.radians(self._angle))
-        self._coo_y -= self._speed * math.sin(math.radians(self._angle))
-        
+        self._coo_x += 20 * math.sin(math.radians(self._angle))
+        self._coo_y -= 20 * math.cos(math.radians(self._angle))
         self.save()
+        return self._coo_x, self._coo_y
 
     def reflex(self):
         if self._coo_x <= 0 or self._coo_x >= 600:
@@ -142,14 +144,17 @@ class Bullet(Unit):
 
         self.save()
 
-    def has_hit_target(self, enemy):
+    def hit_enemy(self, enemy):
         return (
-            abs(self._coo_x - enemy._coo_x) < 30 and
-            abs(self._coo_y - enemy._coo_y) < 30
+            abs(self._coo_x - enemy._coo_x) < 50 and
+            abs(self._coo_y - enemy._coo_y) < 50
         )
 
     def broke(self):
-        player = Player.objects.first()
-        player.score(1)
-        player.save()
+        player = Player.objects.filter(id=1).first()
+        if player:
+            player.score = 1
+            player.save()
+        else:
+            print("플레이어 없음")
         self.delete()
