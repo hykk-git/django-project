@@ -20,8 +20,13 @@ class PlayerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def create_player(self, request):
+        Player.objects.all().delete()
+        Enemy.objects.all().delete()
+        Bullet.objects.all().delete()
+
         player = Player.create_player()
-        return Response({"message": "Player created"})
+        # return Response({"message": "Player created"})
+        return Response({"message": "Game Start", "player_id": player.id})
     
     @action(detail=False, methods=['post'])
     def fire(self, request):

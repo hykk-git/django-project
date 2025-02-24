@@ -30,7 +30,7 @@ class Player(models.Model):
 
     @classmethod
     def create_player(cls):
-        player = cls.objects.get_or_create(
+        player, created = cls.objects.get_or_create(
             id=1,
             defaults={"name": "Player1"}
         )
