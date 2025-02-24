@@ -44,7 +44,7 @@ class Player(models.Model):
             Bullet.objects.last().delete()
             
         bullet = Bullet.objects.create(
-            number=str(uuid.uuid4()),
+            number=int(Bullet.objects.count()+1),
             _coo_x=300,
             _coo_y=750,
             _angle=angle
@@ -56,7 +56,7 @@ class Unit(models.Model):
     """
     게임 내 필요한 객체들을 생성하는 추상 클래스
     """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.AutoField(primary_key=True)
     number = models.CharField(max_length=100)
     created = models.DateTimeField(auto_now_add=True)
     _coo_x = models.IntegerField()
@@ -95,10 +95,10 @@ class Enemy(Unit):
         spawn_positions = [50, 150, 250, 350, 450]  
         spawn_x = random.choice(spawn_positions)
         return cls.objects.create(
-            number=str(uuid.uuid4()),
+            id=int(cls.objects.count()+1),
             _coo_x=spawn_x,
             _coo_y=0,
-            _speed = 50
+            _speed = 100
         )
 
     def move(self):
