@@ -101,13 +101,17 @@
             }
 
             function updatePlayerState() {
-                fetch('/api/player/1/') 
+                fetch('/api/player/1/')
                     .then(response => response.json())
                     .then(data => {
-                        window.parent.postMessage({ score: data.score, life: data.life }, "*");
+                        console.log("Fetched player state:", data);
+                        if (data._score !== undefined && data._life !== undefined) {
+                            window.parent.postMessage({ score: data._score, life: data._life }, "*");
+                        }
                     })
                     .catch(error => console.error("Error updating player state:", error));
             }
+            
 
             function updateEnemies(enemies) {
                 document.querySelectorAll(".enemy").forEach(e => e.remove());
@@ -130,17 +134,25 @@
                     gameArea.appendChild(bulletDiv);
                 });
             }
-
+            
             function updateGame() {
                 Promise.all([
                     fetch('/api/enemies/').then(response => response.json()).then(updateEnemies),
                     fetch('/api/bullets/').then(response => response.json()).then(updateBullets),
-                    fetch('/api/enemies/spawn/', { method: 'POST' }),
                     fetch('/api/enemies/move/', { method: 'POST' }),
                     fetch('/api/bullets/move/', { method: 'POST' })
                 ])
                 .catch(error => console.error("Error updating game state:", error))
-                .finally(() => setTimeout(updateGame, 500));  
+                .finally(() => requestAnimationFrame(updateGame));  
+            }
+            
+            function spawnEnemy() {
+                fetch('/api/enemies/spawn/', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => console.log("Spawned enemy:", data))
+                    .catch(error => console.error("Error spawning enemy:", error));
+    
+                setTimeout(spawnEnemy, Math.random() * 3000 + 2000); 
             }
 
             document.getElementById("fireBtn").addEventListener("click", function() {
@@ -163,6 +175,7 @@
 
             createPlayer();
             updateGame();
+            spawnEnemy();
             setInterval(updatePlayerState, 500);
         });
     </script>

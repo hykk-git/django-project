@@ -70,14 +70,6 @@ class Unit(models.Model):
     @coo.setter
     def coo(self, val):
         self._coo_x, self._coo_y = val, val
-    
-    @property
-    def speed(self):
-        return self._speed
-    
-    @speed.setter
-    def speed(self, val):
-        self._speed = val
 
     def move(self):
         pass
@@ -95,24 +87,24 @@ class Enemy(Unit):
         spawn_positions = [50, 150, 250, 350, 450]  
         spawn_x = random.choice(spawn_positions)
         return cls.objects.create(
-            id=int(cls.objects.count()+1),
             _coo_x=spawn_x,
             _coo_y=0,
-            _speed = 100
+            _speed = 10
         )
 
     def move(self):
         self._coo_y += 10
         self.save()
-        return self._coo_x, self._coo_y # 디버깅 옵션. 추후 삭제해야 함
+        return self._coo_x, self._coo_y 
 
     def hit_bottom(self):
-        return self._coo_y >=900
+        return self._coo_y >=800
 
     def broke(self):
         player = Player.objects.filter(id=1).first()
         if player:
             player.life = -1
+            print("life: ", player.life)
             player.save()
         else:
             print("플레이어 없음")
@@ -130,32 +122,40 @@ class Bullet(Unit):
         self._angle = val
         
     def move(self):
-        self._coo_x += self._speed * math.sin(math.radians(self._angle))
-        self._coo_y -= self._speed * math.cos(math.radians(self._angle))
-        self.save()
-        return self._coo_x, self._coo_y # 디버깅 옵션. 추후 삭제해야 함
+        self._coo_x += 50 * math.sin(math.radians(self._angle))
+        self._coo_y -= 50 * math.cos(math.radians(self._angle))
 
-    def reflex(self):
+        if self._coo_y < 0 or self._coo_y > 800:
+            print(f"Bullet {self.id} out of bounds! Deleting...")
+            self.delete()
+            return
+
         if self._coo_x <= 0 or self._coo_x >= 600:
-            self._angle = 180 - self._angle 
-
-        if self._coo_y <= 0:
             self._angle = -self._angle
 
         self.save()
-        return self._coo_x, self._coo_y # 디버깅 옵션. 추후 삭제해야 함
 
     def hit_enemy(self, enemy):
-        return (
-            abs(self._coo_x - enemy._coo_x) < 50 and
-            abs(self._coo_y - enemy._coo_y) < 50
-        )
+        bullet_left = self._coo_x - 5
+        bullet_right = self._coo_x + 5
+        bullet_top = self._coo_y - 5
+        bullet_bottom = self._coo_y + 5
+
+        enemy_left = enemy._coo_x - 25
+        enemy_right = enemy._coo_x + 25
+        enemy_top = enemy._coo_y - 25
+        enemy_bottom = enemy._coo_y + 25
+
+        if not (bullet_right < enemy_left or bullet_left > enemy_right or
+                bullet_bottom < enemy_top or bullet_top > enemy_bottom):
+            print(f"Bullet {self.id} hit Enemy {enemy.id}")
+            return True
+        return False
 
     def broke(self):
-        player = Player.objects.filter(id=1).first()
+        player = Player.objects.first()
         if player:
-            player.score = 1
+            print(f"Bullet {self.id} hit enemy! Score: {player.score} → {player.score + 1}")
+            player.score += 1
             player.save()
-        else:
-            print("플레이어 없음")
         self.delete()

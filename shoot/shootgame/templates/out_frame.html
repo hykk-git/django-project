@@ -10,10 +10,11 @@
     <p>Score: <span id="score">0</span></p>
     <p>Life: <span id="life">3</span></p>
     
-    <iframe id="gameArea" src="{% url 'frame' %}" width="600" height="900" frameborder="0"></iframe>
+    <iframe id="gameArea" src="{% url 'frame' %}" width="600" height="800" frameborder="0"></iframe>
 
     <script>
         window.addEventListener("message", function(event) {
+            console.log("Received message:", event.data);
             if (event.data.score !== undefined && event.data.life !== undefined) {
                 document.getElementById("score").innerText = event.data.score;
                 document.getElementById("life").innerText = event.data.life;
