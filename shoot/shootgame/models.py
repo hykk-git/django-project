@@ -42,7 +42,7 @@ class Player(models.Model):
             
         if Bullet.objects.count() >= 3:
             Bullet.objects.last().delete()
-
+            
         bullet = Bullet.objects.create(
             number=str(uuid.uuid4()),
             _coo_x=300,

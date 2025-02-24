@@ -100,6 +100,15 @@
                 .catch(error => console.error("Error creating player:", error));
             }
 
+            function updatePlayerState() {
+                fetch('/api/player/1/') 
+                    .then(response => response.json())
+                    .then(data => {
+                        window.parent.postMessage({ score: data.score, life: data.life }, "*");
+                    })
+                    .catch(error => console.error("Error updating player state:", error));
+            }
+
             function updateEnemies(enemies) {
                 document.querySelectorAll(".enemy").forEach(e => e.remove());
                 enemies.forEach(enemy => {
@@ -126,12 +135,12 @@
                 Promise.all([
                     fetch('/api/enemies/').then(response => response.json()).then(updateEnemies),
                     fetch('/api/bullets/').then(response => response.json()).then(updateBullets),
-                    fetch('/api/enemies/move/', { method: 'POST' }),
-                    fetch('/api/bullets/move/', { method: 'POST' }),
                     fetch('/api/enemies/spawn/', { method: 'POST' }),
+                    fetch('/api/enemies/move/', { method: 'POST' }),
+                    fetch('/api/bullets/move/', { method: 'POST' })
                 ])
                 .catch(error => console.error("Error updating game state:", error))
-                .finally(() => setTimeout(updateGame, 100));  
+                .finally(() => setTimeout(updateGame, 500));  
             }
 
             document.getElementById("fireBtn").addEventListener("click", function() {
@@ -146,6 +155,7 @@
                         console.error("Bullet could not be fired:", data.error);
                     } else {
                         console.log("Bullet fired:", data);
+                        updatePlayerState();
                     }
                 })
                 .catch(error => console.error("Error firing bullet:", error));
@@ -153,6 +163,7 @@
 
             createPlayer();
             updateGame();
+            setInterval(updatePlayerState, 500);
         });
     </script>
 </body>
