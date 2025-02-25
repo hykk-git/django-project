@@ -101,12 +101,12 @@
             }
 
             function updatePlayerState() {
-                fetch('/api/player/1/')
+                fetch('/api/player/status/')
                     .then(response => response.json())
                     .then(data => {
                         console.log("Fetched player state:", data);
                         if (data._score !== undefined && data._life !== undefined) {
-                            window.parent.postMessage({ score: data._score, life: data._life }, "*");
+                            window.parent.postMessage({ score: data.score, life: data.life }, "*");
                         }
                     })
                     .catch(error => console.error("Error updating player state:", error));
@@ -166,7 +166,7 @@
                     clearGameObjects();
                 }
             }, false);
-            
+
             document.getElementById("fireBtn").addEventListener("click", function() {
                 fetch('/api/player/fire/', { 
                     method: "POST", 

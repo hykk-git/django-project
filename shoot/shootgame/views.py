@@ -20,7 +20,7 @@ class PlayerViewSet(viewsets.ModelViewSet):
     serializer_class = PlayerSerializer
 
     @action(detail=False, methods=['post'])
-    def create_player(self, request):
+    def get_player(self, request):
         Player.objects.all().delete()
         Enemy.objects.all().delete()
         Bullet.objects.all().delete()
@@ -29,7 +29,7 @@ class PlayerViewSet(viewsets.ModelViewSet):
             cursor.execute("DELETE FROM sqlite_sequence WHERE name='shootgame_enemy'")
             cursor.execute("DELETE FROM sqlite_sequence WHERE name='shootgame_bullet'")
 
-        player = Player.create_player()
+        player = Player.get_player()
         return Response({"message": "Game Start", "player_id": player.id})
 
     @action(detail=False, methods=['post'])

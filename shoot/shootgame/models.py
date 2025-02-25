@@ -1,17 +1,12 @@
 from django.db import models
 import math
-import uuid
 import random
 
 class Player(models.Model):
-    """
-    Bullet 객체에게 총알 생성 요청 보내는 객체
-    """
     name = models.CharField(max_length=100)
     id = models.CharField(primary_key=True, default="1", max_length=10, editable=False)
     _score = models.IntegerField(default=0)
     _life = models.IntegerField(default=3)
-    _game_over = models.BooleanField(default=False)
 
     @property
     def score(self):
@@ -20,6 +15,7 @@ class Player(models.Model):
     @score.setter
     def score(self, val):
         self._score += val
+        self.save()
 
     @property
     def life(self):
@@ -28,15 +24,21 @@ class Player(models.Model):
     @life.setter
     def life(self, val):
         self._life += val
+        self.save()
 
     @classmethod
-    def create_player(cls):
-        player, created = cls.objects.get_or_create(
-            id=1,
-            defaults={"name": "Player1"}
-        )
+    def get_player(cls):
+        player, _ = cls.objects.get_or_create(id=1, defaults={"name": "Player1"})
         return player
-    
+
+    def take_damage(self, val):
+        self._life -= val
+        self.save()
+
+    def gain_score(self, val):
+        self._score += val
+        self.save()
+
     def fire(self, angle):
         if self.life <= 0:
             return None
@@ -54,18 +56,18 @@ class Player(models.Model):
     
     @property
     def game_over(self):
-        return self._life == 0
+        return self.life <= 0
 
 class Unit(models.Model):
-    """
-    게임 내 필요한 객체들을 생성하는 추상 클래스
-    """
     id = models.AutoField(primary_key=True)
-    number = models.CharField(max_length=100)
+    number = models.CharField(max_length=100, blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
     _coo_x = models.IntegerField()
     _coo_y = models.IntegerField()
     _speed = models.IntegerField(default=100)
+
+    class Meta:
+        abstract = True
 
     @property
     def coo(self):
@@ -73,42 +75,33 @@ class Unit(models.Model):
 
     @coo.setter
     def coo(self, val):
-        self._coo_x, self._coo_y = val, val
+        self._coo_x, self._coo_y = val
 
     def move(self):
-        pass
+        raise NotImplementedError("Must implement move method.")
 
     def broke(self):
-        pass
-
-    class Meta:
-        abstract = True
-
+        self.delete()
 
 class Enemy(Unit):
     @classmethod
     def create_enemy(cls):
-        spawn_positions = [50, 150, 250, 350, 450]  
+        spawn_positions = [50, 150, 250, 350, 450]
         spawn_x = random.choice(spawn_positions)
-        return cls.objects.create(
-            _coo_x=spawn_x,
-            _coo_y=0,
-            _speed = 10
-        )
+        return cls.objects.create(_coo_x=spawn_x, _coo_y=0, _speed=10)
 
     def move(self):
-        self._coo_y += 10
+        self._coo_y += self._speed
         self.save()
-        return self._coo_x, self._coo_y 
+        return self.coo
 
     def hit_bottom(self):
-        return self._coo_y >=800
+        return self._coo_y >= 800
 
     def broke(self):
-        player = Player.objects.filter(id=1).first()
-        player.life = -1
-        player.save()
-        self.delete()
+        player = Player.get_player()
+        player.take_damage(1)
+        super().broke()
 
 class Bullet(Unit):
     _angle = models.IntegerField()
@@ -120,13 +113,12 @@ class Bullet(Unit):
     @angle.setter
     def angle(self, val):
         self._angle = val
-        
+
     def move(self):
         self._coo_x += 50 * math.sin(math.radians(self._angle))
         self._coo_y -= 50 * math.cos(math.radians(self._angle))
 
         if self._coo_y < 0 or self._coo_y > 800:
-            print(f"Bullet {self.id} out of bounds")
             self.delete()
             return
 
@@ -136,25 +128,15 @@ class Bullet(Unit):
         self.save()
 
     def hit_enemy(self, enemy):
-        bullet_left = self._coo_x - 5
-        bullet_right = self._coo_x + 5
-        bullet_top = self._coo_y - 5
-        bullet_bottom = self._coo_y + 5
+        bullet_rect = (self._coo_x - 5, self._coo_y - 5, self._coo_x + 5, self._coo_y + 5)
+        enemy_rect = (enemy._coo_x - 25, enemy._coo_y - 25, enemy._coo_x + 25, enemy._coo_y + 25)
 
-        enemy_left = enemy._coo_x - 25
-        enemy_right = enemy._coo_x + 25
-        enemy_top = enemy._coo_y - 25
-        enemy_bottom = enemy._coo_y + 25
+        overlap_x = bullet_rect[2] >= enemy_rect[0] and bullet_rect[0] <= enemy_rect[2]
+        overlap_y = bullet_rect[3] >= enemy_rect[1] and bullet_rect[1] <= enemy_rect[3]
 
-        if not (bullet_right < enemy_left or bullet_left > enemy_right or
-                bullet_bottom < enemy_top or bullet_top > enemy_bottom):
-            return True
-        return False
+        return overlap_x and overlap_y
 
     def broke(self):
-        player = Player.objects.first()
-        player.score += 1
-        player.save()
-        self.delete()
-
-        
+        player = Player.get_player()
+        player.gain_score(1)
+        super().broke()
