@@ -62,7 +62,7 @@ class Player(models.Model):
             _angle=angle
         )
         return bullet
-
+    
     def game_over(self):
         return self.life <= 0
 
