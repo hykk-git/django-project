@@ -9,7 +9,7 @@ class Config:
     SCORE = 0
     MAX_BULLET = 3
     BULLET_SIZE = 10
-    ENEMY_SIZE = 30
+    ENEMY_SIZE = 50
 
 class Player(models.Model):
     name = models.CharField(max_length=100)
@@ -36,7 +36,7 @@ class Player(models.Model):
         self.save()
 
     @classmethod
-    def get_player(cls):
+    def start_player(cls):
         player, _ = cls.objects.get_or_create(id=1, defaults={"name": "Player1"})
         return player
 
@@ -116,9 +116,9 @@ class BoxEnemy(Unit):
         return self._coo_y >= Config.FRAME_HEIGHT
 
     def broke(self):
-        player = Player.get_player()
+        player = Player.start_player()
         player.take_damage(1)
-        super().broke()
+        super().broke() 
 
 class Bullet(Unit):
     _angle = models.IntegerField()
@@ -158,6 +158,6 @@ class Bullet(Unit):
         return overlap_x and overlap_y
 
     def broke(self):
-        player = Player.get_player()
+        player = Player.start_player()
         player.gain_score(1)
         super().broke()

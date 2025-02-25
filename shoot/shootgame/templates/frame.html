@@ -90,8 +90,8 @@
                 angleDisplay.innerText = `Angle: ${selectedAngle}°`;
             });
             
-            function createPlayer() {
-                fetch('/api/create/player/', {
+            function startPlayer() {
+                fetch('/api/start/player/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 })
@@ -185,7 +185,7 @@
                 .catch(error => console.error("Error firing bullet:", error));
             });
 
-            createPlayer();
+            startPlayer();
             updateGame();
             spawnEnemy();
             setInterval(updatePlayerState, 500);

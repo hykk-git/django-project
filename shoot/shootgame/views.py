@@ -20,12 +20,12 @@ class PlayerViewSet(viewsets.ModelViewSet):
     serializer_class = PlayerSerializer
 
     @action(detail=False, methods=['post'])
-    def get_player(self, request):
+    def start_player(self, request):
         Player.objects.all().delete()
         BoxEnemy.objects.all().delete()
         Bullet.objects.all().delete()
 
-        player = Player.get_player()
+        player = Player.start_player()
         return Response({"message": "Game Start", "player_id": player.id})
 
     @action(detail=False, methods=['post'])
