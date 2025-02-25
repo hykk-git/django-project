@@ -102,7 +102,6 @@ class Unit(models.Model):
 
 class BoxEnemy(Unit):
     @classmethod
-    # 요청 안했는데 생성..?
     def create_enemy(cls):
         spawn_pos = [50, 150, 250, 350, 450]
         spawn_x = random.choice(spawn_pos)
