@@ -2,11 +2,20 @@ from django.db import models
 import math
 import random
 
+class Config:
+    FRAME_WIDTH = 600
+    FRAME_HEIGHT = 800
+    LIFE = 3
+    SCORE = 0
+    MAX_BULLET = 3
+    BULLET_SIZE = 10
+    ENEMY_SIZE = 30
+
 class Player(models.Model):
     name = models.CharField(max_length=100)
     id = models.CharField(primary_key=True, default="1", max_length=10, editable=False)
-    _score = models.IntegerField(default=0)
-    _life = models.IntegerField(default=3)
+    _score = models.IntegerField(default=Config.SCORE)
+    _life = models.IntegerField(default=Config.LIFE)
 
     @property
     def score(self):
@@ -43,13 +52,13 @@ class Player(models.Model):
         if self.life <= 0:
             return None
             
-        if Bullet.objects.count() >= 3:
+        if Bullet.objects.count() >= Config.MAX_BULLET:
             Bullet.objects.last().delete()
             
         bullet = Bullet.objects.create(
             number=int(Bullet.objects.count()+1),
-            _coo_x=300,
-            _coo_y=750,
+            _coo_x=Config.FRAME_WIDTH//2,
+            _coo_y=Config.FRAME_HEIGHT,
             _angle=angle
         )
         return bullet
@@ -77,17 +86,25 @@ class Unit(models.Model):
     def coo(self, val):
         self._coo_x, self._coo_y = val
 
+    @property
+    def speed(self):
+        return self._speed
+
+    @speed.setter
+    def speed(self, val):
+        self.speed = val
+
     def move(self):
-        raise NotImplementedError("Must implement move method.")
+        pass
 
     def broke(self):
         self.delete()
 
-class Enemy(Unit):
+class BoxEnemy(Unit):
     @classmethod
     def create_enemy(cls):
-        spawn_positions = [50, 150, 250, 350, 450]
-        spawn_x = random.choice(spawn_positions)
+        spawn_pos = [50, 150, 250, 350, 450]
+        spawn_x = random.choice(spawn_pos)
         return cls.objects.create(_coo_x=spawn_x, _coo_y=0, _speed=10)
 
     def move(self):
@@ -96,7 +113,7 @@ class Enemy(Unit):
         return self.coo
 
     def hit_bottom(self):
-        return self._coo_y >= 800
+        return self._coo_y >= Config.FRAME_HEIGHT
 
     def broke(self):
         player = Player.get_player()
@@ -115,21 +132,25 @@ class Bullet(Unit):
         self._angle = val
 
     def move(self):
-        self._coo_x += 50 * math.sin(math.radians(self._angle))
-        self._coo_y -= 50 * math.cos(math.radians(self._angle))
+        self._coo_x += self._speed * math.sin(math.radians(self._angle))
+        self._coo_y -= self._speed * math.cos(math.radians(self._angle))
 
-        if self._coo_y < 0 or self._coo_y > 800:
+        if self._coo_y < 0 or self._coo_y > Config.FRAME_HEIGHT:
             self.delete()
             return
 
-        if self._coo_x <= 0 or self._coo_x >= 600:
+        if self._coo_x <= 0 or self._coo_x >= Config.FRAME_WIDTH:
             self._angle = -self._angle
 
         self.save()
 
     def hit_enemy(self, enemy):
-        bullet_rect = (self._coo_x - 5, self._coo_y - 5, self._coo_x + 5, self._coo_y + 5)
-        enemy_rect = (enemy._coo_x - 25, enemy._coo_y - 25, enemy._coo_x + 25, enemy._coo_y + 25)
+        bull_x, bull_y = self.coo
+        enemy_x, enemy_y = enemy.coo
+        bull_sz = Config.BULLET_SIZE//2
+        enemy_sz = Config.ENEMY_SIZE//2
+        bullet_rect = (bull_x- bull_sz, bull_y - bull_sz, bull_x + bull_sz, bull_y + bull_sz)
+        enemy_rect = (enemy_x - enemy_sz, enemy_y - enemy_sz, enemy_x + enemy_sz, enemy_y + enemy_sz)
 
         overlap_x = bullet_rect[2] >= enemy_rect[0] and bullet_rect[0] <= enemy_rect[2]
         overlap_y = bullet_rect[3] >= enemy_rect[1] and bullet_rect[1] <= enemy_rect[3]

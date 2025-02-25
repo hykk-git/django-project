@@ -1,9 +1,9 @@
 from rest_framework import serializers
 from .models import *
 
-class EnemySerializer(serializers.ModelSerializer):
+class BoxEnemySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Enemy
+        model = BoxEnemy
         fields = '__all__'
 
 

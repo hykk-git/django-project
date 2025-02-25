@@ -22,12 +22,8 @@ class PlayerViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def get_player(self, request):
         Player.objects.all().delete()
-        Enemy.objects.all().delete()
+        BoxEnemy.objects.all().delete()
         Bullet.objects.all().delete()
-
-        with connection.cursor() as cursor:
-            cursor.execute("DELETE FROM sqlite_sequence WHERE name='shootgame_enemy'")
-            cursor.execute("DELETE FROM sqlite_sequence WHERE name='shootgame_bullet'")
 
         player = Player.get_player()
         return Response({"message": "Game Start", "player_id": player.id})
@@ -63,20 +59,19 @@ class PlayerViewSet(viewsets.ModelViewSet):
             "game_over": player.game_over
         })
 
-
-class EnemyViewSet(viewsets.ModelViewSet):
-    queryset = Enemy.objects.all()
-    serializer_class = EnemySerializer
+class BoxEnemyViewSet(viewsets.ModelViewSet):
+    queryset = BoxEnemy.objects.all()
+    serializer_class = BoxEnemySerializer
 
     @action(detail=False, methods=['post'])
     def spawn(self, request):
+        enemy = BoxEnemy.create_enemy()
         time.sleep(random.uniform(3, 5)) 
-        enemy = Enemy.create_enemy()
-        return Response(EnemySerializer(enemy).data)
+        return Response(BoxEnemySerializer(enemy).data)
 
     @action(detail=False, methods=['post'])
     def move(self, request):
-        for enemy in Enemy.objects.all():
+        for enemy in BoxEnemy.objects.all():
             enemy.move()
 
             if enemy.hit_bottom():
@@ -92,7 +87,7 @@ class BulletViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def move(self, request):
         bullets = Bullet.objects.all()
-        enemies = Enemy.objects.all()
+        enemies = BoxEnemy.objects.all()
         
         for bullet in bullets:
             bullet.move()
