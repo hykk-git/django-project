@@ -1,6 +1,6 @@
 FROM python:3.12.7
 
-WORKDIR /shoot
+WORKDIR /workspace/shoot
 
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -10,10 +10,9 @@ RUN apt-get update && apt-get install -y \
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-COPY requirements.txt /shoot/
+COPY . /workspace/shoot/
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /shoot/
 
 EXPOSE 8000
 

@@ -1,12 +1,12 @@
 {
     "name": "Django Dev Container",
-    "dockerFile": "/Users/vimo/Desktop/n1/django-project/shoot/Dockerfile",
-    "workspaceFolder": "/workspaces/django-project",
+    "dockerFile": "../Dockerfile",
+    "workspaceFolder": "/workspace/shoot",
     "forwardPorts": [8000],
     "customizations": {
         "vscode": {
             "settings": {
-                "python.defaultInterpreterPath": "/opt/anaconda3/bin/python"
+                "python.defaultInterpreterPath": "/usr/local/bin/python"
             },
             "extensions": [
                 "ms-python.python",
@@ -14,6 +14,6 @@
             ]
         }
     },
-    "postCreateCommand": "pip install -r ../shoot/requirements.txt",
+    "postCreateCommand": "pip install -r /workspace/shoot/requirements.txt",
     "remoteUser": "root"
 }
