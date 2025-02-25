@@ -39,24 +39,30 @@ class PlayerViewSet(viewsets.ModelViewSet):
             return Response({"error": "Player not found"}, status=400)
 
         try:
-            angle = int(request.data.get('angle'))
-            print(f"Received fire request with angle: {angle}")  
+            angle = int(request.data.get('angle'))  
         except (TypeError, ValueError):
             print("Invalid angle received!")  
             return Response({"error": "Invalid angle value"}, status=400)
-
-        if Bullet.objects.count() >= 3:
-            oldest_bullet = Bullet.objects.earliest('created')
-            print(f"Deleting oldest bullet: {oldest_bullet.id}")
-            oldest_bullet.delete()
 
         bullet = player.fire(angle)
         if not bullet:
             print("Bullet creation failed!")  
             return Response({"error": "Bullet could not be created"}, status=400)
 
-        print(f"Bullet {bullet.id} created at ({bullet._coo_x}, {bullet._coo_y})") 
         return Response(BulletSerializer(bullet).data)
+    
+    @action(detail=False, methods=['get'])
+    def status(self, request):
+        player = Player.objects.first()
+        if not player:
+            return Response({"error": "Player not found"}, status=400)
+
+        return Response({
+            "score": player.score,
+            "life": player.life,
+            "game_over": player.game_over
+        })
+
 
 class EnemyViewSet(viewsets.ModelViewSet):
     queryset = Enemy.objects.all()
@@ -64,7 +70,7 @@ class EnemyViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def spawn(self, request):
-        time.sleep(random.uniform(4, 6)) 
+        time.sleep(random.uniform(3, 5)) 
         enemy = Enemy.create_enemy()
         return Response(EnemySerializer(enemy).data)
 
@@ -74,7 +80,6 @@ class EnemyViewSet(viewsets.ModelViewSet):
             enemy.move()
 
             if enemy.hit_bottom():
-                print(f"Enemy {enemy.id} hit bottom!") 
                 enemy.broke()
 
         return Response({"message": "Enemies moved"})
@@ -94,18 +99,16 @@ class BulletViewSet(viewsets.ModelViewSet):
 
             for enemy in enemies:
                 if bullet.hit_enemy(enemy):
-                    print(f"Bullet {bullet.id} hit Enemy {enemy.id}")  
                     bullet.broke()
                     enemy.broke()
                     
                     player = Player.objects.first()
-                    if player:
-                        return Response({
+                    return Response({
                             "message": f"Bullet {bullet.id} hit Enemy {enemy.id}",
                             "score": player.score,
                             "life": player.life
                         })
-
+                        
         return Response({"message": "Bullets moved"})
 
 

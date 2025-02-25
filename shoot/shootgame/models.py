@@ -11,7 +11,8 @@ class Player(models.Model):
     id = models.CharField(primary_key=True, default="1", max_length=10, editable=False)
     _score = models.IntegerField(default=0)
     _life = models.IntegerField(default=3)
-    
+    _game_over = models.BooleanField(default=False)
+
     @property
     def score(self):
         return self._score
@@ -49,9 +50,12 @@ class Player(models.Model):
             _coo_y=750,
             _angle=angle
         )
-        print("bullet 현재 개수: ", Bullet.objects.count())
         return bullet
     
+    @property
+    def game_over(self):
+        return self._life == 0
+
 class Unit(models.Model):
     """
     게임 내 필요한 객체들을 생성하는 추상 클래스
@@ -102,12 +106,8 @@ class Enemy(Unit):
 
     def broke(self):
         player = Player.objects.filter(id=1).first()
-        if player:
-            player.life = -1
-            print("life: ", player.life)
-            player.save()
-        else:
-            print("플레이어 없음")
+        player.life = -1
+        player.save()
         self.delete()
 
 class Bullet(Unit):
@@ -126,7 +126,7 @@ class Bullet(Unit):
         self._coo_y -= 50 * math.cos(math.radians(self._angle))
 
         if self._coo_y < 0 or self._coo_y > 800:
-            print(f"Bullet {self.id} out of bounds! Deleting...")
+            print(f"Bullet {self.id} out of bounds")
             self.delete()
             return
 
@@ -148,14 +148,13 @@ class Bullet(Unit):
 
         if not (bullet_right < enemy_left or bullet_left > enemy_right or
                 bullet_bottom < enemy_top or bullet_top > enemy_bottom):
-            print(f"Bullet {self.id} hit Enemy {enemy.id}")
             return True
         return False
 
     def broke(self):
         player = Player.objects.first()
-        if player:
-            print(f"Bullet {self.id} hit enemy! Score: {player.score} → {player.score + 1}")
-            player.score += 1
-            player.save()
+        player.score += 1
+        player.save()
         self.delete()
+
+        

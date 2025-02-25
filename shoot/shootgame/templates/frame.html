@@ -154,7 +154,19 @@
     
                 setTimeout(spawnEnemy, Math.random() * 3000 + 2000); 
             }
+            
+            function clearGameObjects() {
+                document.querySelectorAll(".enemy, .bullet, #gun").forEach(e => e.remove());
+                document.getElementById("fireBtn").disabled = true;
+            }
 
+            window.addEventListener("message", function(event) {
+                if (event.data.gameOver) {
+                    console.log("Game Over! Clearing game objects.");  // 디버깅용 로그
+                    clearGameObjects();
+                }
+            }, false);
+            
             document.getElementById("fireBtn").addEventListener("click", function() {
                 fetch('/api/player/fire/', { 
                     method: "POST", 
