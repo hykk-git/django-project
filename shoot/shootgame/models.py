@@ -62,15 +62,14 @@ class Player(models.Model):
             _angle=angle
         )
         return bullet
-    
-    @property
+
     def game_over(self):
         return self.life <= 0
 
 class Unit(models.Model):
     id = models.AutoField(primary_key=True)
     number = models.CharField(max_length=100, blank=True, null=True)
-    created = models.DateTimeField(auto_now_add=True)
+    _created = models.DateTimeField(auto_now_add=True)
     _coo_x = models.IntegerField()
     _coo_y = models.IntegerField()
     _speed = models.IntegerField(default=100)
@@ -102,6 +101,7 @@ class Unit(models.Model):
 
 class BoxEnemy(Unit):
     @classmethod
+    # 요청 안했는데 생성..?
     def create_enemy(cls):
         spawn_pos = [50, 150, 250, 350, 450]
         spawn_x = random.choice(spawn_pos)
@@ -110,7 +110,6 @@ class BoxEnemy(Unit):
     def move(self):
         self._coo_y += self._speed
         self.save()
-        return self.coo
 
     def hit_bottom(self):
         return self._coo_y >= Config.FRAME_HEIGHT
@@ -118,7 +117,7 @@ class BoxEnemy(Unit):
     def broke(self):
         player = Player.start_player()
         player.take_damage(1)
-        super().broke() 
+        super().broke()
 
 class Bullet(Unit):
     _angle = models.IntegerField()
@@ -137,7 +136,6 @@ class Bullet(Unit):
 
         if self._coo_y < 0 or self._coo_y > Config.FRAME_HEIGHT:
             self.delete()
-            return
 
         if self._coo_x <= 0 or self._coo_x >= Config.FRAME_WIDTH:
             self._angle = -self._angle

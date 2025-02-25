@@ -34,15 +34,10 @@ class PlayerViewSet(viewsets.ModelViewSet):
         if not player:
             return Response({"error": "Player not found"}, status=400)
 
-        try:
-            angle = int(request.data.get('angle'))  
-        except (TypeError, ValueError):
-            print("Invalid angle received!")  
-            return Response({"error": "Invalid angle value"}, status=400)
+        angle = int(request.data.get('angle'))  
 
         bullet = player.fire(angle)
-        if not bullet:
-            print("Bullet creation failed!")  
+        if not bullet: 
             return Response({"error": "Bullet could not be created"}, status=400)
 
         return Response(BulletSerializer(bullet).data)
