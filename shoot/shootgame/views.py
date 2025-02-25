@@ -51,7 +51,7 @@ class PlayerViewSet(viewsets.ModelViewSet):
         return Response({
             "score": player.score,
             "life": player.life,
-            "game_over": player.game_over()
+            "game_over": player.game_over
         })
 
 class BoxEnemyViewSet(viewsets.ModelViewSet):

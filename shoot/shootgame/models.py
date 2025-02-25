@@ -61,9 +61,9 @@ class Player(models.Model):
             _coo_y=Config.FRAME_HEIGHT,
             _angle=angle
         )
-        print("bullet 현재 개수: ", Bullet.objects.count())
         return bullet
     
+    @property
     def game_over(self):
         return self.life <= 0
 
