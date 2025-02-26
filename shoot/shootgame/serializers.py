@@ -1,12 +1,6 @@
 from rest_framework import serializers
 from .models import *
 
-class BoxEnemySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BoxEnemy
-        fields = '__all__'
-
-
 class BulletSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bullet

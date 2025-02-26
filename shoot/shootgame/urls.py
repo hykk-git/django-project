@@ -1,19 +1,19 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views import *
 from django.views.generic import TemplateView
 
-from .views import *
-
 router = DefaultRouter()
-router.register(r'enemies', BoxEnemyViewSet)
-router.register(r'bullets', BulletViewSet)
-router.register(r'player', PlayerViewSet)
-
+router.register(r'game', GameView, basename='game')
+router.register(r'player', PlayerView, basename= 'player')
 urlpatterns = [
     path('', include(router.urls)),
-    path('start/player/', PlayerViewSet.as_view({'post': 'start_player'}), name = "player-create"),
-    path('player/fire/', PlayerViewSet.as_view({'post': 'fire'}), name = "player-fire"),
-    path('enemies/spawn/', BoxEnemyViewSet.as_view({'post': 'spawn'}), name = "enemy-spawn"),
+    path('game/start/', GameView.as_view({'post': 'start'}), name="game-start"),
+    path('game/spawn/', GameView.as_view({'post': 'spawn'}), name="enemy-spawn"),
+    path('game/tick/', GameView.as_view({'post': 'tick'}), name="game-tick"),
+    path('player/start/', PlayerView.as_view({'post': 'start_player'}), name="player-start"),
+    path('player/fire/', PlayerView.as_view({'post': 'fire'}), name="player-fire"),
+    path('player/status/', PlayerView.as_view({'get': 'status'}), name="player-status"),
     path('home/', OutFrameView.as_view(), name="out_frame"), 
-    path('frame/', TemplateView.as_view(template_name="frame.html"), name = "frame"), 
+    path('frame/', TemplateView.as_view(template_name="frame.html"), name="frame"),
 ]

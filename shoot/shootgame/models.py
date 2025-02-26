@@ -35,12 +35,7 @@ class Player(models.Model):
         self._life += val
         self.save()
 
-    @classmethod
-    def start_player(cls):
-        player, _ = cls.objects.get_or_create(id=1, defaults={"name": "Player1"})
-        return player
-
-    def take_damage(self, val):
+    def lose_life(self, val):
         self._life -= val
         self.save()
 
@@ -49,19 +44,7 @@ class Player(models.Model):
         self.save()
 
     def fire(self, angle):
-        if self.life <= 0:
-            return None
-            
-        if Bullet.objects.count() >= Config.MAX_BULLET:
-            Bullet.objects.last().delete()
-            
-        bullet = Bullet.objects.create(
-            number=int(Bullet.objects.count()+1),
-            _coo_x=Config.FRAME_WIDTH//2,
-            _coo_y=Config.FRAME_HEIGHT,
-            _angle=angle
-        )
-        return bullet
+        return Unit.create_bullet(angle)
     
     @property
     def game_over(self):
@@ -74,9 +57,6 @@ class Unit(models.Model):
     _coo_x = models.IntegerField()
     _coo_y = models.IntegerField()
     _speed = models.IntegerField(default=100)
-
-    class Meta:
-        abstract = True
 
     @property
     def coo(self):
@@ -92,7 +72,7 @@ class Unit(models.Model):
 
     @speed.setter
     def speed(self, val):
-        self.speed = val
+        self._speed = val
 
     def move(self):
         pass
@@ -100,24 +80,42 @@ class Unit(models.Model):
     def broke(self):
         self.delete()
 
-class BoxEnemy(Unit):
+    @classmethod
+    def clear_units(cls):
+        BoxEnemy.objects.all().delete()
+        Bullet.objects.all().delete()
+
     @classmethod
     def create_enemy(cls):
         spawn_pos = [50, 150, 250, 350, 450]
         spawn_x = random.choice(spawn_pos)
         return cls.objects.create(_coo_x=spawn_x, _coo_y=0, _speed=10)
 
+    @classmethod
+    def get_units(cls, unit):
+        return unit.objects.all()
+    
+    @classmethod
+    def create_bullet(cls, angle):
+        if Bullet.objects.count() >= Config.MAX_BULLET:
+            Bullet.objects.last().delete()
+
+        return Bullet.objects.create(
+            number=str(Bullet.objects.count()+1),
+            _coo_x=Config.FRAME_WIDTH//2,
+            _coo_y=Config.FRAME_HEIGHT,
+            _angle=angle
+        )
+
+class BoxEnemy(Unit):
     def move(self):
-        self._coo_y += 10
+        self._coo_y += self._speed
         self.save()
-        return self._coo_x, self._coo_y
 
     def hit_bottom(self):
         return self._coo_y >= Config.FRAME_HEIGHT
 
     def broke(self):
-        player = Player.start_player()
-        player.take_damage(1)
         super().broke()
 
 class Bullet(Unit):
@@ -157,6 +155,51 @@ class Bullet(Unit):
         return overlap_x and overlap_y
 
     def broke(self):
-        player = Player.start_player()
-        player.gain_score(1)
         super().broke()
+
+class GameControl(models.Model):
+    def __init__(self):
+        self.player, _ = Player.objects.get_or_create(id=1, defaults={"name": "Player1"})
+
+    def start_player(self):
+        Player.objects.all().delete()
+        Unit.clear_units()
+
+        self.player, _ = Player.objects.get_or_create(id=1, defaults={"name": "Player1"})
+        return {
+            "message": "Game Start",
+            "player_id": self.player.id
+        }
+    
+    def spawn_enemy(self):
+        enemy = Unit.create_enemy()
+        return {
+            "id": enemy.id,
+            "coo_x": enemy._coo_x,
+            "coo_y": enemy._coo_y,
+            "speed": enemy._speed
+        }
+    
+    def update_tick(self):
+        bullets = Unit.get_units(Bullet)
+        enemies = Unit.get_units(BoxEnemy)
+
+        for bullet in bullets:
+            bullet.move()
+            for enemy in enemies:
+                if bullet.hit_enemy(enemy):
+                    enemy.broke()
+                    bullet.broke()
+                    self.player.gain_score(1)
+
+        for enemy in enemies:
+            enemy.move()
+            if enemy.hit_bottom():
+                enemy.broke()
+                self.player.lose_life(1)
+
+        return {
+            "score": self.player.score,
+            "life": self.player.life,
+            "game_over": self.player.game_over
+        }

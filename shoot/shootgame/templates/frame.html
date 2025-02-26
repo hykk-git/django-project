@@ -82,14 +82,13 @@
             const gameArea = document.getElementById("gameArea");
             const angleControl = document.getElementById("angleControl");
             const angleDisplay = document.getElementById("angleDisplay");
-
             let selectedAngle = 0;
 
             angleControl.addEventListener("input", function () {
                 selectedAngle = parseInt(angleControl.value);
                 angleDisplay.innerText = `Angle: ${selectedAngle}°`;
             });
-            
+
             function startPlayer() {
                 fetch('/api/start/player/', {
                     method: 'POST',
@@ -100,72 +99,60 @@
                 .catch(error => console.error("Error creating player:", error));
             }
 
-            function updatePlayerState() {
-                fetch('/api/player/status/')
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log("Fetched player state:", data);
-                        if (data._score !== undefined && data._life !== undefined) {
-                            window.parent.postMessage({ score: data.score, life: data.life }, "*");
-                        }
-                    })
-                    .catch(error => console.error("Error updating player state:", error));
-            }
-            
-
-            function updateEnemies(enemies) {
-                document.querySelectorAll(".enemy").forEach(e => e.remove());
-                enemies.forEach(enemy => {
-                    let enemyDiv = document.createElement("div");
-                    enemyDiv.className = "enemy";
-                    enemyDiv.style.left = `${enemy._coo_x || enemy.coo_x}px`;
-                    enemyDiv.style.top = `${enemy._coo_y || enemy.coo_y}px`;
-                    gameArea.appendChild(enemyDiv);
-                });
-            }
-
-            function updateBullets(bullets) {
-                document.querySelectorAll(".bullet").forEach(b => b.remove());
-                bullets.forEach(bullet => {
-                    let bulletDiv = document.createElement("div");
-                    bulletDiv.className = "bullet";
-                    bulletDiv.style.left = `${bullet._coo_x || bullet.coo_x}px`;
-                    bulletDiv.style.top = `${bullet._coo_y || bullet.coo_y}px`;
-                    gameArea.appendChild(bulletDiv);
-                });
-            }
-            
             function updateGame() {
-                Promise.all([
-                    fetch('/api/enemies/').then(response => response.json()).then(updateEnemies),
-                    fetch('/api/bullets/').then(response => response.json()).then(updateBullets),
-                    fetch('/api/enemies/move/', { method: 'POST' }),
-                    fetch('/api/bullets/move/', { method: 'POST' })
-                ])
-                .catch(error => console.error("Error updating game state:", error))
-                .finally(() => requestAnimationFrame(updateGame));  
+                fetch('/api/game/tick/', { method: "POST" })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Game updated:", data);
+                    
+                    updateEntities(data.bullets, "bullet");
+                    updateEntities(data.enemies, "enemy");
+
+                    if (data.game_over) {
+                        window.parent.postMessage({ gameOver: true }, "*");
+                        document.getElementById("fireBtn").disabled = true;
+                    }
+
+                    window.parent.postMessage({ score: data.score, life: data.life }, "*");
+                })
+                .catch(error => console.error("Error updating game state:", error));
             }
             
             function spawnEnemy() {
-                fetch('/api/enemies/spawn/', { method: 'POST' })
-                    .then(response => response.json())
-                    .then(data => console.log("Spawned enemy:", data))
-                    .catch(error => console.error("Error spawning enemy:", error));
-    
-                setTimeout(spawnEnemy, Math.random() * 3000 + 2000); 
-            }
-            
-            function clearGameObjects() {
-                document.querySelectorAll(".enemy, .bullet, #gun").forEach(e => e.remove());
-                document.getElementById("fireBtn").disabled = true;
+                fetch('/api/game/spawn/', { method: 'POST' })  
+                .then(response => response.json())
+                .then(data => console.log("Enemy spawned:", data))
+                .catch(error => console.error("Error spawning enemy:", error));
             }
 
-            window.addEventListener("message", function(event) {
-                if (event.data.gameOver) {
-                    console.log("Game Over! Clearing game objects.");  // 디버깅용 로그
-                    clearGameObjects();
-                }
-            }, false);
+    function fireBullet() {
+        fetch('/api/player/fire/', { 
+            method: "POST", 
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ angle: selectedAngle }) 
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error("Bullet could not be fired:", data.error);
+            } else {
+                console.log("Bullet fired:", data);
+            }
+        })
+        .catch(error => console.error("Error firing bullet:", error));
+    }
+
+
+            function updateEntities(entities, className) {
+                document.querySelectorAll(`.${className}`).forEach(e => e.remove());
+                entities.forEach(entity => {
+                    let entityDiv = document.createElement("div");
+                    entityDiv.className = className;
+                    entityDiv.style.left = `${entity.coo_x}px`;
+                    entityDiv.style.top = `${entity.coo_y}px`;
+                    gameArea.appendChild(entityDiv);
+                });
+            }
 
             document.getElementById("fireBtn").addEventListener("click", function() {
                 fetch('/api/player/fire/', { 
@@ -179,16 +166,14 @@
                         console.error("Bullet could not be fired:", data.error);
                     } else {
                         console.log("Bullet fired:", data);
-                        updatePlayerState();
                     }
                 })
                 .catch(error => console.error("Error firing bullet:", error));
             });
 
             startPlayer();
-            updateGame();
-            spawnEnemy();
-            setInterval(updatePlayerState, 500);
+            setInterval(updateGame, 100); 
+            setInterval(spawnEnemy, 3000);
         });
     </script>
 </body>
