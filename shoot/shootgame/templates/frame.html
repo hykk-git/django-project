@@ -89,15 +89,15 @@
                 angleDisplay.innerText = `Angle: ${selectedAngle}°`;
             });
 
-            function startPlayer() {
-                fetch('/api/start/player/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                })
-                .then(response => response.json())
-                .then(data => console.log("Player created:", data))
-                .catch(error => console.error("Error creating player:", error));
-            }
+            // function startPlayer() {
+            //     fetch('/api/player/start/', {
+            //         method: 'POST',
+            //         headers: { 'Content-Type': 'application/json' }
+            //     })
+            //     .then(response => response.json())
+            //     .then(data => console.log("Player created:", data))
+            //     .catch(error => console.error("Error creating player:", error));
+            // }
 
             function updateGame() {
                 fetch('/api/game/tick/', { method: "POST" })

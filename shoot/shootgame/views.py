@@ -16,12 +16,7 @@ class FrameView(TemplateView):
 class PlayerView(viewsets.ModelViewSet):
     queryset = Player.objects.all()
     serializer_class = PlayerSerializer
-
-    @action(detail=False, methods=['post'])
-    def start_player(self, request):
-        player = Player.start_player()
-        return Response({"message": "Game Start", "player_id": player.id})
-
+        
     @action(detail=False, methods=['post'])
     def fire(self, request):
         player = Player.objects.first()
@@ -30,7 +25,6 @@ class PlayerView(viewsets.ModelViewSet):
 
         angle = int(request.data.get('angle'))
         bullet = player.fire(angle)
-        
         if not bullet: 
             return Response({"error": "Bullet could not be created"}, status=400)
 
@@ -48,14 +42,13 @@ class PlayerView(viewsets.ModelViewSet):
             "game_over": player.game_over
         })
 
-class GameView(viewsets.ModelViewSet):
+class GameView(viewsets.ViewSet):
     ctr = GameControl()
 
-    @action(detail=False, methods=['post'])
-    def start_player(self, request):
-        start_response = self.ctr.start_player()
-        return Response(start_response)
-
+    def create(self, request, *args, **kwargs):
+        player = Player.start_player()
+        return Response({"message": "Game Start", "player_id": player.id})
+    
     @action(detail=False, methods=['post'])
     def spawn(self, request):
         enemy_data = self.ctr.spawn_enemy()

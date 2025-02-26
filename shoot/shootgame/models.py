@@ -91,9 +91,9 @@ class Unit(models.Model):
         spawn_x = random.choice(spawn_pos)
         return cls.objects.create(_coo_x=spawn_x, _coo_y=0, _speed=10)
 
-    @classmethod
-    def get_units(cls, unit):
-        return unit.objects.all()
+    # @classmethod
+    # def get_units(cls, unit):
+    #     return unit.objects.all()
     
     @classmethod
     def create_bullet(cls, angle):
@@ -157,19 +157,19 @@ class Bullet(Unit):
     def broke(self):
         super().broke()
 
-class GameControl(models.Model):
+class GameControl:
     def __init__(self):
-        self.player, _ = Player.objects.get_or_create(id=1, defaults={"name": "Player1"})
+        self.player = Player.objects.first()  
 
-    def start_player(self):
+        if not self.player:  
+            self.player = Player.objects.create(id=1, name="Player1")
+
+    def player_start(self):
         Player.objects.all().delete()
         Unit.clear_units()
 
-        self.player, _ = Player.objects.get_or_create(id=1, defaults={"name": "Player1"})
-        return {
-            "message": "Game Start",
-            "player_id": self.player.id
-        }
+        player, _ = Player.objects.get_or_create(id=1, defaults={"name": "Player1"})
+        return player
     
     def spawn_enemy(self):
         enemy = Unit.create_enemy()
@@ -181,8 +181,9 @@ class GameControl(models.Model):
         }
     
     def update_tick(self):
-        bullets = Unit.get_units(Bullet)
-        enemies = Unit.get_units(BoxEnemy)
+        bullets = Bullet.objects.all()
+        enemies = BoxEnemy.objects.all()
+        player = Player.objects.first()
 
         for bullet in bullets:
             bullet.move()
@@ -190,16 +191,16 @@ class GameControl(models.Model):
                 if bullet.hit_enemy(enemy):
                     enemy.broke()
                     bullet.broke()
-                    self.player.gain_score(1)
+                    player.gain_score(1)
 
         for enemy in enemies:
             enemy.move()
             if enemy.hit_bottom():
                 enemy.broke()
-                self.player.lose_life(1)
+                player.lose_life(1)
 
         return {
-            "score": self.player.score,
-            "life": self.player.life,
-            "game_over": self.player.game_over
+            "score": player.score,
+            "life": player.life,
+            "game_over": player.game_over
         }
