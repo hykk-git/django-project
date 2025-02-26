@@ -43,6 +43,7 @@ class Player(models.Model):
         self._score += val
         self.save()
 
+    # Unit 참조
     def fire(self, angle):
         return Unit.create_bullet(angle)
     
@@ -80,6 +81,7 @@ class Unit(models.Model):
     def broke(self):
         self.delete()
 
+    # 자식 클래스 참조
     @classmethod
     def clear_units(cls):
         BoxEnemy.objects.all().delete()
@@ -90,11 +92,8 @@ class Unit(models.Model):
         spawn_pos = [50, 150, 250, 350, 450]
         spawn_x = random.choice(spawn_pos)
         return cls.objects.create(_coo_x=spawn_x, _coo_y=0, _speed=10)
-
-    # @classmethod
-    # def get_units(cls, unit):
-    #     return unit.objects.all()
     
+    # 자식 클래스 생성- 이건 여기 있으면 안됨
     @classmethod
     def create_bullet(cls, angle):
         if Bullet.objects.count() >= Config.MAX_BULLET:
@@ -141,6 +140,7 @@ class Bullet(Unit):
 
         self.save()
 
+    #Enemy 참조
     def hit_enemy(self, enemy):
         bull_x, bull_y = self.coo
         enemy_x, enemy_y = enemy.coo
@@ -157,6 +157,7 @@ class Bullet(Unit):
     def broke(self):
         super().broke()
 
+# 얘를 어떻게 분산하던지 해야함. 답이없음
 class GameControl:
     def __init__(self):
         self.player = Player.objects.first()  
@@ -164,6 +165,7 @@ class GameControl:
         if not self.player:  
             self.player = Player.objects.create(id=1, name="Player1")
 
+    #player 참조
     def player_start(self):
         Player.objects.all().delete()
         Unit.clear_units()
@@ -171,6 +173,7 @@ class GameControl:
         player, _ = Player.objects.get_or_create(id=1, defaults={"name": "Player1"})
         return player
     
+    #unit 참조
     def spawn_enemy(self):
         enemy = Unit.create_enemy()
         return {
