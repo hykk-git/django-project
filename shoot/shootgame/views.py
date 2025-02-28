@@ -43,10 +43,11 @@ class PlayerView(viewsets.ModelViewSet):
         })
 
 class GameView(viewsets.ViewSet):
-    ctr = GameControl()
+    ctr = CreateObject()
 
     def create(self, request, *args, **kwargs):
         player = Player.start_player()
+        enemy = self.ctr.spawn(Enemy)
         return Response({"message": "Game Start", "player_id": player.id})
     
     @action(detail=False, methods=['post'])
