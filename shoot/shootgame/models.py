@@ -35,16 +35,8 @@ class Collapsible(Visible):
         pass
     
     def broke(self):
-        pass
+        self.delete()
 
-    class Meta:
-        abstract = True
-
-class PlayerStatus(NonVisible):
-    status_val = models.IntegerField()
-    def update(self, effect):
-        self.status_val += effect
-    
     class Meta:
         abstract = True
 
@@ -71,9 +63,6 @@ class Bullet(Collapsible):
         self.__coo_y -= self.__speed * math.cos(math.radians(self.__angle))
         self.save()
 
-    def broke(self):
-        # if 벽일 때, else enemy일 때...
-        pass
 
 class Enemy(Collapsible):
     spawn_pos = models.CharField()
@@ -90,10 +79,20 @@ class Enemy(Collapsible):
     def move(self):
         self.__point_y += self.__speed
         self.save()
+        
+
+class StatusCondition:
+    collapsible = models.ForeignKey(Collapsible)
+
+class PlayerStatus(NonVisible):
+    status_val = models.IntegerField()
+    status_condition = models.ForeignKey(StatusCondition)
+
+    def update(self):
+        self.status_val += self.status_condition
     
-    def broke(self):
-        #if 바닥일 때
-        pass
+    class Meta:
+        abstract = True
 
 class Score(PlayerStatus):
     pass

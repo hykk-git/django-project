@@ -18,8 +18,7 @@ class FrameView(TemplateView):
 class PlayerViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def start_game(self, request):
-        Player.objects.all().delete()
-        BoxEnemy.objects.all().delete()
+        Enemy.objects.all().delete()
         Bullet.objects.all().delete()
 
         player = Player.start_player()
