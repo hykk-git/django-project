@@ -7,73 +7,68 @@ from .serializers import *
 import random
 import time
 from django.db import connection
+from django.http import JsonResponse
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+import json
+
 
 class OutFrameView(TemplateView):
     template_name = "out_frame.html"
 
-class FrameView(TemplateView):
-    template_name = "frame.html"
+class GameObjectsView(View):
+    def get(self, request, *args, **kwargs):
+        bullets = [bullet.aabb() for bullet in Bullet.objects.all()]
+        enemies = [enemy.aabb() for enemy in Enemy.objects.all()]
+        walls = [
+            LeftWall.objects.first().aabb(), 
+            RightWall.objects.first().aabb()
+        ]
+        ground = [Bottom.objects.first().aabb()]
 
-class PlayerViewSet(viewsets.ModelViewSet):
-    @action(detail=False, methods=['post'])
-    def start_player(self, request):
-        
-        return Response({"message": "Game Start", "player_id": player.id})
-
-    @action(detail=False, methods=['post'])
-    def fire(self, request):
-        player = Player.objects.first()
-        if not player:
-            return Response({"error": "Player not found"}, status=400)
-
-        angle = int(request.data.get('angle'))  
-
-        bullet = player.fire(angle)
-        if not bullet: 
-            return Response({"error": "Bullet could not be created"}, status=400)
-
-        return Response(BulletSerializer(bullet).data)
-
-    @action(detail=False, methods=['get'])
-    def status(self, request):
-        player = Player.objects.first()
-        if not player:
-            return Response({"error": "Player not found"}, status=400)
-
-        return Response({
-            "score": player.score,
-            "life": player.life,
-            "game_over": player.game_over()
-            "game_over": player.game_over
+        return JsonResponse({
+            "bullets": bullets,
+            "enemies": enemies,
+            "walls": walls,
+            "ground": ground
         })
 
-class BoxEnemyViewSet(viewsets.ModelViewSet):
-    queryset = BoxEnemy.objects.all()
-    serializer_class = BoxEnemySerializer
+@method_decorator(csrf_exempt, name='dispatch')
+class FireBulletView(View):
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+            angle = data.get("angle", 90)  
+            angle = max(-90, min(90, angle)) 
 
-    @action(detail=False, methods=['post'])
-    def spawn(self, request):
-        enemy = BoxEnemy.create_enemy()
-        time.sleep(random.uniform(3, 5)) 
-        return Response(BoxEnemySerializer(enemy).data)
+            gun, _ = Gun.objects.get_or_create(
+                defaults={"__point_x": GameArea.objects.first().__width // 2, "__point_y": GameArea.objects.first().__height - 50}
+            )
+            gun.fire(angle)
 
-    @action(detail=False, methods=['post'])
-    def move(self, request):
-        for enemy in BoxEnemy.objects.all():
-            enemy.move()
+            return JsonResponse({"status": "success", "message": f"Bullet fired at {angle} degrees!"})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)})
 
-            if enemy.hit_bottom():
-                enemy.broke()
-
-        return Response({"message": "Enemies moved"})
-
-class BulletViewSet(viewsets.ModelViewSet):
-    queryset = Bullet.objects.all()
-    serializer_class = BulletSerializer
-
-    @action(detail=False, methods=['post'])
-    def move(self, request):
+class UpdateGameView(View):
+    def get(self, request, *args, **kwargs):
         bullets = Bullet.objects.all()
-        enemies = BoxEnemy.objects.all()
+        enemies = Enemy.objects.all()
+        walls = [LeftWall.objects.first(), RightWall.objects.first(), Bottom.objects.first()]
 
-        
+        for bullet in bullets:
+            bullet.update()
+        for enemy in enemies:
+            enemy.update()
+
+        return JsonResponse({"status": "success", "message": "Game updated!"})
+
+class GameFrameView(TemplateView):
+    template_name = "frame.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        game_area = GameArea.objects.first()
+        context["game_area"] = game_area
+        return context
