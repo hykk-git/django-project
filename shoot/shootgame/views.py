@@ -6,7 +6,6 @@ from .models import *
 from .serializers import *
 import random
 import time
-import uuid
 from django.db import connection
 
 class OutFrameView(TemplateView):
@@ -17,11 +16,8 @@ class FrameView(TemplateView):
 
 class PlayerViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
-    def start_game(self, request):
-        Enemy.objects.all().delete()
-        Bullet.objects.all().delete()
-
-        player = Player.start_player()
+    def start_player(self, request):
+        
         return Response({"message": "Game Start", "player_id": player.id})
 
     @action(detail=False, methods=['post'])
@@ -74,19 +70,10 @@ class BoxEnemyViewSet(viewsets.ModelViewSet):
 class BulletViewSet(viewsets.ModelViewSet):
     queryset = Bullet.objects.all()
     serializer_class = BulletSerializer
-    lookup_field = "id"
 
     @action(detail=False, methods=['post'])
     def move(self, request):
         bullets = Bullet.objects.all()
-        enemies = Enemy.objects.all()
+        enemies = BoxEnemy.objects.all()
 
-        for bullet in bullets:
-            bullet.move()
-
-            for enemy in enemies:
-                if bullet.hit_enemy(enemy):
-                    bullet.broke()
-                    enemy.broke()
-
-        return Response({"message": "Bullets moved"})
+        

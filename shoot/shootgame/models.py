@@ -9,19 +9,24 @@ class GameObject:
     @property
     def name(self):
         return self.name
+    
     class Meta:
         abstract = True
 
 class Visible(GameObject):
     __point_x = models.IntegerField()
     __point_y = models.IntegerField()
-
-    @property
+    __size = models.IntegerField()
+    
     def point(self):
         return self.__point_x, self.__point_y
     
+    # size 포함 본인 위치 반환
+    def aabb(self):
+        pass
+    
     def update(self):
-        # 자기 상태 업데이트(이동)
+        # 자기 상태 화면에 업데이트(이동)
         pass
 
     class Meta:
@@ -38,7 +43,7 @@ class Effect(GameObject):
 class Collidable(Visible):
     # 충돌하는 객체들은 속도가 있음(움직임)
     __speed = models.IntegerField()
-
+    
     def isCollision(self, unit):
         pass
 
@@ -46,11 +51,11 @@ class Collidable(Visible):
         abstract = True
 
 class Gun(Visible):
-    max_bullet = models.IntegerField(default=3)
+    __max_bullet = models.IntegerField(default=3)
 
     @overrides
     def update(self):
-        x, y = Walls.point
+        x, y = GameArea.point
         self.__point_x, self.__point_y = x//2, y
         self.save()
      
@@ -68,16 +73,26 @@ class Bullet(Collidable):
     def create_bullet(self, angle):
         return Bullet.objects.create(
             number=str(Bullet.objects.count()+1),
-            __point_x=self.__width//2, # 중앙 생성
+            __point_x=self.__width,
             __point_y=self.__height,
             __angle=angle
         )
     
     @overrides
+    def aabb(self):
+        return (
+            self.__point_x,                 
+            self.__point_y,                
+            self.__point_x + self.size,    
+            self.__point_y + self.size    
+        )
+    
+    @overrides
     def isCollision(self, unit):
-        x1, y1 = self.__point_x, self.__point_y
-        x2, y2 = unit.point
-        return (x2-x1)^2+(y2-y1)^2 <= (x1+x2)^2
+        x1, y1, x2, y2 = self.aabb()
+        a1, b1, a2, b2 = unit.aabb() # 너의 위치도 알려줘
+
+        return x2<=a1 and y2<=b1 and a2<=x1 and b2<=y1
 
     @overrides
     def update(self):
@@ -103,26 +118,80 @@ class Enemy(Collidable):
         )
     
     @overrides
+    def aabb(self):
+        return (
+            self.__point_x,                 
+            self.__point_y,                
+            self.__point_x + self.size,    
+            self.__point_y + self.size    
+        )
+    
+    @overrides
     def isCollision(self, unit):
-        x1, y1 = self.__point_x, self.__point_y
-        x2, y2 = unit.point
-        return (x2-x1)^2+(y2-y1)^2 <= (x1+x2)^2
+        x1, y1, x2, y2 = self.aabb()
+        a1, b1, a2, b2 = unit.aabb() # 너의 위치도 알려줘
 
-        # view에 가서 isColl->effect 호출 
+        return x2<=a1 and y2<=b1 and a2<=x1 and b2<=y1
+
+        # view에 가서 isColl->effect 호출
 
     @overrides
     def update(self):
         self.__point_y += self.__speed
         self.save()
 
-class Walls(Visible):
-    height = models.IntegerField(default=800) 
-    width = models.IntegerField(default=600)
+class GameArea(Visible):
+    __height = models.IntegerField(default=800) 
+    __width = models.IntegerField(default=600)
 
+    class Meta:
+        abstract = True
+
+class LeftWall(GameArea):
+    @overrides
+    def aabb(self):
+        return (
+            0,                                 
+            0,    
+            0,
+            self.__height
+        )
+    
     def update(self):
-        self.__point_x, self.__point_y = 0, self.width
+        self.__point_x, self.__point_y = 0, self.__height
+        self.save()
 
-class reflex(Effect):
+class RightWall(GameArea):
+    @overrides
+    def aabb(self):
+        return (
+            self.__width,                                 
+            0,    
+            self.__width,
+            self.__height
+        )
+    
+    @overrides
+    def update(self):
+        self.__point_x, self.__point_y = self.__width, self.__height
+        self.save()
+
+class Bottom(GameArea):
+    @overrides
+    def aabb(self):
+        return (
+            0,                                 
+            0,    
+            self.__width,
+            0
+        )
+    
+    @overrides
+    def update(self):
+        self.__point_x, self.__point_y = self.__width, 0
+        self.save()
+
+class Reflex(Effect):
     # 충돌시 반사해라
 
     @overrides
@@ -130,14 +199,22 @@ class reflex(Effect):
         unit.reflex()
 
 class Score(Effect):
-    status = models.IntegerField(default=0)
+    __current_status = models.IntegerField(default=0)
 
+    @property
+    def status(self):
+        return self.__current_status
+    
     @overrides
     def activate(self):
         self.status += 1
 
 class Life(Effect):
-    status = models.IntegerField(default=3)
+    __current_status = models.IntegerField(default=0)
+
+    @property
+    def status(self):
+        return self.__current_status
 
     @overrides
     def activate(self):
