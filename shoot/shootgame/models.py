@@ -109,12 +109,13 @@ class Enemy(Collidable):
     spawn_pos = models.CharField()
 
     @classmethod
-    def create_enemy(self, angle):
+    def create_enemy(self):
+        self.spawn_pos = [50, 150, 250, 350, 450]
+
         return Enemy.objects.create(
             number=str(Bullet.objects.count()+1),
             __point_x=random.choice(self.spawn_pos),
-            __point_y=self.__height,
-            __angle=angle
+            __point_y=self.__height
         )
     
     @overrides
@@ -144,6 +145,10 @@ class GameArea(Visible):
     __height = models.IntegerField(default=800) 
     __width = models.IntegerField(default=600)
 
+    @property
+    def frame_size(self):
+        return self.__height, self.__width
+    
     class Meta:
         abstract = True
 
