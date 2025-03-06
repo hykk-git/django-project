@@ -1,61 +1,181 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from django.views.generic import TemplateView
-from .models import *
-from .serializers import PlayerSerializer, BulletSerializer
+from django.shortcuts import render
+from django.http import JsonResponse, HttpResponse
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+import json
 import random
-import time
+import math
 
-class OutFrameView(TemplateView):
-    template_name = "out_frame.html"
+from .models import (
+    Gun, Bullet, Enemy, GameArea, LeftWall, RightWall, Bottom, 
+    Reflex, Score, Life
+)
 
-class FrameView(TemplateView):
-    template_name = "frame.html"
+def index(request):
+    return render(request, 'game/index.html')
 
-class PlayerView(viewsets.ModelViewSet):
-    queryset = Player.objects.all()
-    serializer_class = PlayerSerializer
+@method_decorator(csrf_exempt, name='dispatch')
+class FrameView(View):
+    def get(self, request):
+        game_area = GameArea()
+        height, width = game_area.frame_size
         
-    @action(detail=False, methods=['post'])
-    def fire(self, request):
-        player = Player.objects.first()
-        if not player:
-            return Response({"error": "Player not found"}, status=400)
+        score_obj = Score.objects.first()
+        life_obj = Life.objects.first()
+        
+        if not score_obj:
+            score_obj = Score.objects.create()
+        
+        if not life_obj:
+            life_obj = Life.objects.create()
+        
+        context = {
+            'height': height,
+            'width': width,
+            'score': score_obj.status,
+            'life': life_obj.status
+        }
+        
+        return JsonResponse(context)
 
-        angle = int(request.data.get('angle'))
-        bullet = player.fire(angle)
-        if not bullet: 
-            return Response({"error": "Bullet could not be created"}, status=400)
+@method_decorator(csrf_exempt, name='dispatch')
+class SpawnView(View):
+    def post(self, request):
+        data = json.loads(request.body)
+        spawn_type = data.get('type')
+        
+        if spawn_type == 'enemy':
+            angle = random.randint(0, 360)
+            enemy = Enemy.create_enemy(angle)
+            
+            return JsonResponse({
+                'success': True,
+                'enemy_id': enemy.id,
+                'position': enemy.point()
+            })
+            
+        elif spawn_type == 'gun':
+            gun, created = Gun.objects.get_or_create(
+                pk=1,
+                defaults={'name': 'player_gun', 'max_bullet': 3}
+            )
+            gun.update()
+            
+            return JsonResponse({
+                'success': True,
+                'gun_id': gun.id,
+                'position': gun.point()
+            })
+        
+        return JsonResponse({'success': False, 'error': '잘못된 객체 유형'})
 
-        return Response(BulletSerializer(bullet).data)
-    
-    @action(detail=False, methods=['get'])
-    def status(self, request):
-        player = Player.objects.first()
-        if not player:
-            return Response({"error": "Player not found"}, status=400)
-
-        return Response({
-            "score": player.score,
-            "life": player.life,
-            "game_over": player.game_over
+@method_decorator(csrf_exempt, name='dispatch')
+class FireView(View):
+    def post(self, request):
+        data = json.loads(request.body)
+        angle = data.get('angle', 90)
+        
+        gun = Gun.objects.first()
+        if not gun:
+            return JsonResponse({'success': False, 'error': '총 객체가 없습니다'})
+        
+        gun.fire(angle)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{angle}도 각도로 발사 완료'
         })
 
-class GameView(viewsets.ViewSet):
-    ctr = GameControl()
-
-    def create(self, request, *args, **kwargs):
-        player = Player.start_player()
-        return Response({"message": "Game Start", "player_id": player.id})
+@method_decorator(csrf_exempt, name='dispatch')
+class GameUpdateView(View):
+    def get(self, request):
+        left_wall = LeftWall.objects.first()
+        right_wall = RightWall.objects.first()
+        bottom = Bottom.objects.first()
     
-    @action(detail=False, methods=['post'])
-    def spawn(self, request):
-        enemy_data = self.ctr.spawn_enemy()
-        time.sleep(random.uniform(3, 5)) 
-        return Response(enemy_data)
+        score = Score.objects.first() or Score.objects.create()
+        life = Life.objects.first() or Life.objects.create()
+        
+        gun = Gun.objects.first()
+        gun.update()
+        
+        left_wall.update()
+        right_wall.update()
+        bottom.update()
+        
+        collisions = []
+        bullets_to_delete = set()
+        enemies_to_delete = set()
+        
+        bullets = Bullet.objects.all()
+        enemies = Enemy.objects.all()
+        
+        for bullet in bullets:
+            bullet.update()
+            
+            for enemy in enemies:
+                if bullet.isCollision(enemy) and enemy.id not in enemies_to_delete and bullet.id not in bullets_to_delete:
+                    score.activate()
+                    
+                    collisions.append({
+                        'type': 'bullet_enemy',
+                        'bullet_id': bullet.id,
+                        'enemy_id': enemy.id
+                    })
+                    
+                    bullets_to_delete.add(bullet.id)
+                    enemies_to_delete.add(enemy.id)
+                    break
+            
+            if left_wall and bullet.isCollision(left_wall):
+                reflex = Reflex()
+                reflex.activate(bullet)
+                
+                collisions.append({
+                    'type': 'bullet_wall',
+                    'bullet_id': bullet.id,
+                    'wall': 'left'
+                })
+            
+            if right_wall and bullet.isCollision(right_wall):
+                reflex = Reflex()
+                reflex.activate(bullet)
+                
+                collisions.append({
+                    'type': 'bullet_wall',
+                    'bullet_id': bullet.id,
+                    'wall': 'right'
+                })
 
-    @action(detail=False, methods=['post'])
-    def tick(self, request):
-        game_state = self.ctr.update_tick()
-        return Response(game_state)
+        for enemy in enemies:
+            if enemy.id in enemies_to_delete:
+                continue
+
+            enemy.update()
+
+            if bottom and enemy.isCollision(bottom):
+                life.activate()
+                
+                collisions.append({
+                    'type': 'enemy_bottom',
+                    'enemy_id': enemy.id
+                })
+                
+                enemies_to_delete.add(enemy.id)
+        
+        for bullet_id in bullets_to_delete:
+            Bullet.objects.filter(id=bullet_id).delete()
+            
+        for enemy_id in enemies_to_delete:
+            Enemy.objects.filter(id=enemy_id).delete()
+        
+        return JsonResponse({
+            'success': True,
+            'bullets': [{'id': b.id, 'position': b.point()} for b in Bullet.objects.all() if b.id not in bullets_to_delete],
+            'enemies': [{'id': e.id, 'position': e.point()} for e in Enemy.objects.all() if e.id not in enemies_to_delete],
+            'gun': {'position': gun.point() if gun else None},
+            'collisions': collisions,
+            'score': score.status,
+            'life': life.status
+        })
